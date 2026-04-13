@@ -526,6 +526,7 @@ dependencies = [
  "aws-credential-types",
  "aws-sdk-secretsmanager",
  "aws-sdk-ssm",
+ "aws-sdk-sts",
  "aws-types",
  "configparser",
  "dirs",

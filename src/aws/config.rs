@@ -9,6 +9,7 @@ pub async fn from_profile(profile_name: &str) -> Result<SdkConfig, String> {
         .profile_name(profile_name)
         .load()
         .await;
+    verify_connection(&config).await?;
     Ok(config)
 }
 
@@ -34,5 +35,18 @@ pub async fn from_manual(creds: &ManualCreds) -> Result<SdkConfig, String> {
         .load()
         .await;
 
+    verify_connection(&config).await?;
     Ok(config)
+}
+
+/// Use STS GetCallerIdentity to verify credentials.
+/// This API requires no special IAM permissions — any valid credential can call it.
+async fn verify_connection(config: &SdkConfig) -> Result<(), String> {
+    let sts_client = aws_sdk_sts::Client::new(config);
+    sts_client
+        .get_caller_identity()
+        .send()
+        .await
+        .map_err(|e| format!("{e}"))?;
+    Ok(())
 }

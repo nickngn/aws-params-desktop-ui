@@ -14,6 +14,10 @@ impl AwsParamApp {
     pub fn new(_cc: &eframe::CreationContext<'_>) -> Self {
         let profiles = aws::profiles::list_profiles();
         let mut state = AppState::default();
+        // Auto-fill credentials from the first profile
+        if let Some(first) = profiles.first() {
+            state.manual_creds = aws::profiles::read_profile_creds(first);
+        }
         state.available_profiles = profiles;
         Self {
             state,
