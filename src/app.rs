@@ -38,7 +38,7 @@ impl AwsParamApp {
             }
             TaskResult::ConfigLoaded(Err(e)) => {
                 self.state.connected = false;
-                self.state.status_message = Some((format!("Connection failed: {e}"), StatusKind::Error));
+                self.state.error_dialog = Some(format!("Connection failed:\n\n{e}"));
             }
             TaskResult::ParamsList(Ok(params)) => {
                 let count = params.len();
@@ -48,7 +48,7 @@ impl AwsParamApp {
                 self.state.status_message = Some((format!("Loaded {count} parameters"), StatusKind::Success));
             }
             TaskResult::ParamsList(Err(e)) => {
-                self.state.status_message = Some((format!("Failed to list params: {e}"), StatusKind::Error));
+                self.state.error_dialog = Some(format!("Failed to list parameters:\n\n{e}"));
             }
             TaskResult::ParamFetched(Ok((_, val))) => {
                 self.state.param_edit_buf = val.text.clone();
@@ -56,14 +56,14 @@ impl AwsParamApp {
                 self.state.param_detail = Some(val);
             }
             TaskResult::ParamFetched(Err(e)) => {
-                self.state.status_message = Some((format!("Failed to get param: {e}"), StatusKind::Error));
+                self.state.error_dialog = Some(format!("Failed to get parameter:\n\n{e}"));
             }
             TaskResult::ParamCreated(Ok(msg)) | TaskResult::ParamUpdated(Ok(msg)) | TaskResult::ParamDeleted(Ok(msg)) => {
                 self.state.status_message = Some((msg, StatusKind::Success));
                 self.refresh_params();
             }
             TaskResult::ParamCreated(Err(e)) | TaskResult::ParamUpdated(Err(e)) | TaskResult::ParamDeleted(Err(e)) => {
-                self.state.status_message = Some((e, StatusKind::Error));
+                self.state.error_dialog = Some(e);
             }
             TaskResult::SecretsList(Ok(secrets)) => {
                 let count = secrets.len();
@@ -73,7 +73,7 @@ impl AwsParamApp {
                 self.state.status_message = Some((format!("Loaded {count} secrets"), StatusKind::Success));
             }
             TaskResult::SecretsList(Err(e)) => {
-                self.state.status_message = Some((format!("Failed to list secrets: {e}"), StatusKind::Error));
+                self.state.error_dialog = Some(format!("Failed to list secrets:\n\n{e}"));
             }
             TaskResult::SecretFetched(Ok((_, val))) => {
                 match &val {
@@ -88,14 +88,14 @@ impl AwsParamApp {
                 self.state.secret_detail = Some(val);
             }
             TaskResult::SecretFetched(Err(e)) => {
-                self.state.status_message = Some((format!("Failed to get secret: {e}"), StatusKind::Error));
+                self.state.error_dialog = Some(format!("Failed to get secret:\n\n{e}"));
             }
             TaskResult::SecretCreated(Ok(msg)) | TaskResult::SecretUpdated(Ok(msg)) | TaskResult::SecretDeleted(Ok(msg)) => {
                 self.state.status_message = Some((msg, StatusKind::Success));
                 self.refresh_secrets();
             }
             TaskResult::SecretCreated(Err(e)) | TaskResult::SecretUpdated(Err(e)) | TaskResult::SecretDeleted(Err(e)) => {
-                self.state.status_message = Some((e, StatusKind::Error));
+                self.state.error_dialog = Some(e);
             }
         }
     }
@@ -301,8 +301,8 @@ impl eframe::App for AwsParamApp {
                             .save_file()
                         {
                             if let Err(e) = std::fs::write(&path, &data) {
-                                self.state.status_message =
-                                    Some((format!("Failed to save: {e}"), StatusKind::Error));
+                                self.state.error_dialog =
+                                    Some(format!("Failed to save file:\n\n{e}"));
                             } else {
                                 self.state.status_message =
                                     Some((format!("Saved to {}", path.display()), StatusKind::Success));
@@ -312,6 +312,27 @@ impl eframe::App for AwsParamApp {
                 }
             }
         });
+
+        // Error dialog
+        if self.state.error_dialog.is_some() {
+            let mut open = true;
+            egui::Window::new("Error")
+                .collapsible(false)
+                .resizable(true)
+                .default_width(400.0)
+                .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
+                .open(&mut open)
+                .show(ctx, |ui| {
+                    ui.label(self.state.error_dialog.as_deref().unwrap_or(""));
+                    ui.add_space(8.0);
+                    if ui.button("OK").clicked() {
+                        self.state.error_dialog = None;
+                    }
+                });
+            if !open {
+                self.state.error_dialog = None;
+            }
+        }
 
         // Keep repainting while loading
         if self.state.loading {

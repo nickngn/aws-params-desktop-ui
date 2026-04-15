@@ -26,6 +26,9 @@ rfd = "0.15"
 dirs = "6"
 configparser = "3"
 
+[build-dependencies]
+winres = "0.1"
+
 [profile.release]
 opt-level = "s"
 lto = true

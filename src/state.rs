@@ -103,6 +103,7 @@ pub struct AppState {
     // UI
     pub loading: bool,
     pub status_message: Option<(String, StatusKind)>,
+    pub error_dialog: Option<String>,
     pub delete_confirm: Option<String>,
 }
 
@@ -135,6 +136,7 @@ impl Default for AppState {
             new_param_type: "String".to_string(),
             loading: false,
             status_message: None,
+            error_dialog: None,
             delete_confirm: None,
         }
     }

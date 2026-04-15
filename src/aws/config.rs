@@ -47,6 +47,26 @@ async fn verify_connection(config: &SdkConfig) -> Result<(), String> {
         .get_caller_identity()
         .send()
         .await
-        .map_err(|e| format!("{e}"))?;
+        .map_err(|e| format_sdk_error(&e))?;
     Ok(())
+}
+
+fn format_sdk_error<E: std::fmt::Debug, R: std::fmt::Debug>(
+    err: &aws_sdk_sts::error::SdkError<E, R>,
+) -> String {
+    match err {
+        aws_sdk_sts::error::SdkError::ServiceError(ctx) => {
+            format!("{:?}", ctx.err())
+        }
+        aws_sdk_sts::error::SdkError::DispatchFailure(e) => {
+            if e.is_io() {
+                "Network error: could not reach AWS".to_string()
+            } else if e.is_timeout() {
+                "Connection timed out".to_string()
+            } else {
+                format!("Dispatch error: {e:?}")
+            }
+        }
+        other => format!("{other}"),
+    }
 }

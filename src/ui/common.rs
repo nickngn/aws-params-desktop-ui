@@ -15,6 +15,11 @@ pub fn status_bar(ui: &mut Ui, state: &AppState) {
             };
             ui.label(RichText::new(msg).color(color));
         }
+
+        // Push "Made by NickNgn" to the right
+        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+            ui.label(RichText::new("Made by NickNgn").color(Color32::GRAY).small());
+        });
     });
 }
 
