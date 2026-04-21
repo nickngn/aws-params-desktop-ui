@@ -7,6 +7,9 @@ fn main() {
         res.set("LegalCopyright", "Copyright (c) 2026 NickNgn");
         res.set("FileVersion", env!("CARGO_PKG_VERSION"));
         res.set("ProductVersion", env!("CARGO_PKG_VERSION"));
-        res.compile().expect("Failed to compile Windows resources");
+        // Skip if rc.exe is not available (e.g. cross-compiling from macOS)
+        if let Err(e) = res.compile() {
+            println!("cargo:warning=Skipping Windows resource embedding: {e}");
+        }
     }
 }

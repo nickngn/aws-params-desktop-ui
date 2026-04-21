@@ -79,7 +79,21 @@ pub fn draw(ui: &mut Ui, state: &mut AppState) -> SecretsAction {
                 if ui.selectable_label(selected, &entry.name).clicked() && state.selected_secret != Some(i) {
                     state.selected_secret = Some(i);
                     state.secret_dirty = false;
-                    action.fetch_value = Some(entry.name.clone());
+                    // Use cached value if available, otherwise fetch
+                    if let Some(cached) = state.secret_cache.get(&entry.name) {
+                        match cached {
+                            SecretValue::Text(t) => {
+                                state.secret_edit_buf = t.clone();
+                            }
+                            SecretValue::Binary(_) => {
+                                state.secret_edit_buf.clear();
+                            }
+                        }
+                        state.secret_detail = Some(cached.clone());
+                    } else {
+                        state.secret_detail = None;
+                        action.fetch_value = Some(entry.name.clone());
+                    }
                 }
             }
         });
@@ -98,6 +112,14 @@ pub fn draw(ui: &mut Ui, state: &mut AppState) -> SecretsAction {
                     ui.strong("Desc:");
                     ui.label(desc);
                 }
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    let is_cached = state.secret_cache.contains_key(&name);
+                    let label = if is_cached { "Refresh Value" } else { "Fetch Value" };
+                    if ui.button(label).clicked() {
+                        state.secret_detail = None;
+                        action.fetch_value = Some(name.clone());
+                    }
+                });
             });
 
             if let Some(detail) = &state.secret_detail {
@@ -134,8 +156,13 @@ pub fn draw(ui: &mut Ui, state: &mut AppState) -> SecretsAction {
                         });
                     }
                 }
-            } else if state.loading {
-                ui.spinner();
+            } else if state.fetching_value {
+                ui.horizontal(|ui| {
+                    ui.spinner();
+                    ui.label("Fetching secret value...");
+                });
+            } else {
+                ui.label("Click \"Fetch Value\" to load the secret.");
             }
         }
     }

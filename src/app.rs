@@ -29,6 +29,7 @@ impl AwsParamApp {
 
     fn handle_result(&mut self, result: TaskResult) {
         self.state.loading = false;
+        self.state.fetching_value = false;
         match result {
             TaskResult::ConfigLoaded(Ok(config)) => {
                 self.ssm_client = Some(aws_sdk_ssm::Client::new(&config));
@@ -50,9 +51,10 @@ impl AwsParamApp {
             TaskResult::ParamsList(Err(e)) => {
                 self.state.error_dialog = Some(format!("Failed to list parameters:\n\n{e}"));
             }
-            TaskResult::ParamFetched(Ok((_, val))) => {
+            TaskResult::ParamFetched(Ok((name, val))) => {
                 self.state.param_edit_buf = val.text.clone();
                 self.state.param_dirty = false;
+                self.state.param_cache.insert(name, val.clone());
                 self.state.param_detail = Some(val);
             }
             TaskResult::ParamFetched(Err(e)) => {
@@ -60,6 +62,7 @@ impl AwsParamApp {
             }
             TaskResult::ParamCreated(Ok(msg)) | TaskResult::ParamUpdated(Ok(msg)) | TaskResult::ParamDeleted(Ok(msg)) => {
                 self.state.status_message = Some((msg, StatusKind::Success));
+                self.state.param_cache.clear();
                 self.refresh_params();
             }
             TaskResult::ParamCreated(Err(e)) | TaskResult::ParamUpdated(Err(e)) | TaskResult::ParamDeleted(Err(e)) => {
@@ -75,7 +78,7 @@ impl AwsParamApp {
             TaskResult::SecretsList(Err(e)) => {
                 self.state.error_dialog = Some(format!("Failed to list secrets:\n\n{e}"));
             }
-            TaskResult::SecretFetched(Ok((_, val))) => {
+            TaskResult::SecretFetched(Ok((name, val))) => {
                 match &val {
                     SecretValue::Text(t) => {
                         self.state.secret_edit_buf = t.clone();
@@ -85,6 +88,7 @@ impl AwsParamApp {
                     }
                 }
                 self.state.secret_dirty = false;
+                self.state.secret_cache.insert(name, val.clone());
                 self.state.secret_detail = Some(val);
             }
             TaskResult::SecretFetched(Err(e)) => {
@@ -92,6 +96,7 @@ impl AwsParamApp {
             }
             TaskResult::SecretCreated(Ok(msg)) | TaskResult::SecretUpdated(Ok(msg)) | TaskResult::SecretDeleted(Ok(msg)) => {
                 self.state.status_message = Some((msg, StatusKind::Success));
+                self.state.secret_cache.clear();
                 self.refresh_secrets();
             }
             TaskResult::SecretCreated(Err(e)) | TaskResult::SecretUpdated(Err(e)) | TaskResult::SecretDeleted(Err(e)) => {
@@ -215,7 +220,7 @@ impl eframe::App for AwsParamApp {
                         self.refresh_params();
                     }
                     if let Some(name) = action.fetch_value {
-                        self.state.loading = true;
+                        self.state.fetching_value = true;
                         self.fetch_param_value(&name);
                     }
                     if let Some((name, value, ptype)) = action.create {
@@ -259,7 +264,7 @@ impl eframe::App for AwsParamApp {
                         self.refresh_secrets();
                     }
                     if let Some(name) = action.fetch_value {
-                        self.state.loading = true;
+                        self.state.fetching_value = true;
                         self.fetch_secret_value(&name);
                     }
                     if let Some((name, value)) = action.create {
@@ -335,7 +340,7 @@ impl eframe::App for AwsParamApp {
         }
 
         // Keep repainting while loading
-        if self.state.loading {
+        if self.state.loading || self.state.fetching_value {
             ctx.request_repaint();
         }
     }

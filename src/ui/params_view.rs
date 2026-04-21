@@ -84,7 +84,14 @@ pub fn draw(ui: &mut Ui, state: &mut AppState) -> ParamsAction {
                 if ui.selectable_label(selected, &label).clicked() && state.selected_param != Some(i) {
                     state.selected_param = Some(i);
                     state.param_dirty = false;
-                    action.fetch_value = Some(entry.name.clone());
+                    // Use cached value if available, otherwise fetch
+                    if let Some(cached) = state.param_cache.get(&entry.name) {
+                        state.param_edit_buf = cached.text.clone();
+                        state.param_detail = Some(cached.clone());
+                    } else {
+                        state.param_detail = None;
+                        action.fetch_value = Some(entry.name.clone());
+                    }
                 }
             }
         });
@@ -102,6 +109,14 @@ pub fn draw(ui: &mut Ui, state: &mut AppState) -> ParamsAction {
                 ui.label(&name);
                 ui.strong("Type:");
                 ui.label(&ptype);
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    let is_cached = state.param_cache.contains_key(&name);
+                    let label = if is_cached { "Refresh Value" } else { "Fetch Value" };
+                    if ui.button(label).clicked() {
+                        state.param_detail = None;
+                        action.fetch_value = Some(name.clone());
+                    }
+                });
             });
 
             if state.param_detail.is_some() {
@@ -143,8 +158,13 @@ pub fn draw(ui: &mut Ui, state: &mut AppState) -> ParamsAction {
                         state.delete_confirm = Some(name);
                     }
                 });
-            } else if state.loading {
-                ui.spinner();
+            } else if state.fetching_value {
+                ui.horizontal(|ui| {
+                    ui.spinner();
+                    ui.label("Fetching parameter value...");
+                });
+            } else {
+                ui.label("Click \"Fetch Value\" to load the parameter.");
             }
         }
     }

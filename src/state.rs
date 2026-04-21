@@ -92,6 +92,10 @@ pub struct AppState {
     pub param_edit_buf: String,
     pub param_dirty: bool,
 
+    // Value caches (name → value)
+    pub secret_cache: std::collections::HashMap<String, SecretValue>,
+    pub param_cache: std::collections::HashMap<String, ParamValue>,
+
     // Create forms
     pub show_create_form: bool,
     pub new_secret_name: String,
@@ -102,6 +106,7 @@ pub struct AppState {
 
     // UI
     pub loading: bool,
+    pub fetching_value: bool,
     pub status_message: Option<(String, StatusKind)>,
     pub error_dialog: Option<String>,
     pub delete_confirm: Option<String>,
@@ -128,6 +133,8 @@ impl Default for AppState {
             param_detail: None,
             param_edit_buf: String::new(),
             param_dirty: false,
+            secret_cache: std::collections::HashMap::new(),
+            param_cache: std::collections::HashMap::new(),
             show_create_form: false,
             new_secret_name: String::new(),
             new_secret_value: String::new(),
@@ -135,6 +142,7 @@ impl Default for AppState {
             new_param_value: String::new(),
             new_param_type: "String".to_string(),
             loading: false,
+            fetching_value: false,
             status_message: None,
             error_dialog: None,
             delete_confirm: None,
